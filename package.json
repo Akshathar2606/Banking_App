@@ -1,0 +1,23 @@
+{
+  "name": "bankease-database",
+  "version": "1.0.0",
+  "description": "Standalone database layer for BankEase mobile banking application",
+  "main": "src/config/database.js",
+  "scripts": {
+    "db:test": "node src/tests/testConnection.js",
+    "db:seed": "node src/tests/seedDemoData.js"
+  },
+  "keywords": [
+    "mongodb",
+    "mongoose",
+    "bankease",
+    "database"
+  ],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "dotenv": "^17.4.2",
+    "mongoose": "^9.10.1"
+  }
+}
