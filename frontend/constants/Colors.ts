@@ -1,16 +1,32 @@
 /**
  * Color palette for the mobile banking app
- * Placeholder values - to be replaced with actual design system colors
+ * Modern banking theme with accessible contrast ratios
  */
 export const Colors = {
-  primary: '#007AFF',
-  secondary: '#5856D6',
+  primary: '#1A73E8', // Modern blue for banking
+  primaryDark: '#1557B0',
+  secondary: '#5F6368',
+  accent: '#34A853', // Green for positive actions
   success: '#34C759',
   warning: '#FF9500',
-  error: '#FF3B30',
-  background: '#F2F2F7',
+  error: '#EA4335',
+  background: '#F5F7FA',
+  backgroundLight: '#FFFFFF',
   card: '#FFFFFF',
-  text: '#000000',
-  textSecondary: '#8E8E93',
-  border: '#C6C6C8',
+  cardShadow: 'rgba(0, 0, 0, 0.1)',
+  text: '#202124',
+  textSecondary: '#5F6368',
+  textLight: '#80868B',
+  border: '#DADCE0',
+  divider: '#E8EAED',
+  
+  // Banking specific colors
+  balanceGradientStart: '#1A73E8',
+  balanceGradientEnd: '#4285F4',
+  income: '#34A853',
+  expense: '#EA4335',
+  
+  // Bottom navigation
+  navActive: '#1A73E8',
+  navInactive: '#80868B',
 };
