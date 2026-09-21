@@ -2,6 +2,7 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity, SafeAreaView } fr
 import { StatusBar } from 'expo-status-bar';
 import { Colors } from '../constants/Colors';
 import { useState } from 'react';
+import { useAuth } from '../context/AuthContext';
 
 // Type definitions
 interface Transaction {
@@ -37,6 +38,7 @@ const QUICK_ACTIONS: QuickAction[] = [
 ];
 
 export default function Index() {
+  const { user, logout } = useAuth();
   const [activeTab, setActiveTab] = useState('Home');
   const [balanceVisible, setBalanceVisible] = useState(true);
 
@@ -50,10 +52,12 @@ export default function Index() {
         <View style={styles.header}>
           <View>
             <Text style={styles.greeting}>Good Morning</Text>
-            <Text style={styles.userName}>Sarah Johnson</Text>
+            <Text style={styles.userName}>{user?.name ?? 'Guest'}</Text>
           </View>
-          <TouchableOpacity style={styles.avatar}>
-            <Text style={styles.avatarText}>SJ</Text>
+          <TouchableOpacity style={styles.avatar} onPress={logout} activeOpacity={0.8}>
+            <Text style={styles.avatarText}>
+              {user?.name ? user.name.charAt(0).toUpperCase() : '?'}
+            </Text>
           </TouchableOpacity>
         </View>
 
@@ -169,6 +173,14 @@ export default function Index() {
               </Text>
             </TouchableOpacity>
           ))}
+          <TouchableOpacity
+            style={styles.navItem}
+            onPress={logout}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.navIcon}>🚪</Text>
+            <Text style={[styles.navLabel, styles.navLabelLogout]}>Logout</Text>
+          </TouchableOpacity>
         </View>
       </View>
     </SafeAreaView>
@@ -395,6 +407,10 @@ const styles = StyleSheet.create({
   },
   navLabelActive: {
     color: Colors.navActive,
+    fontWeight: '600',
+  },
+  navLabelLogout: {
+    color: Colors.error,
     fontWeight: '600',
   },
 });
