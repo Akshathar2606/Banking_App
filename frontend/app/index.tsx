@@ -2,6 +2,7 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity, SafeAreaView } fr
 import { StatusBar } from 'expo-status-bar';
 import { Colors } from '../constants/Colors';
 import { useState } from 'react';
+import { router } from 'expo-router';
 
 // Type definitions
 interface Transaction {
@@ -41,6 +42,19 @@ export default function Index() {
   const [balanceVisible, setBalanceVisible] = useState(true);
 
   const demoBalance = 5247.83;
+
+  const handleNavigate = (tab: string) => {
+    setActiveTab(tab);
+    if (tab === 'Cards') {
+      router.push('/cards');
+    } else if (tab === 'History') {
+      router.push('/history');
+    } else if (tab === 'Profile') {
+      router.push('/profile');
+    } else if (tab === 'Home') {
+      // Already on Home
+    }
+  };
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -152,7 +166,7 @@ export default function Index() {
             <TouchableOpacity
               key={tab}
               style={styles.navItem}
-              onPress={() => setActiveTab(tab)}
+              onPress={() => handleNavigate(tab)}
               activeOpacity={0.7}
             >
               <Text style={[
