@@ -1,18 +1,11 @@
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, SafeAreaView } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, SafeAreaView, ActivityIndicator } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { Colors } from '../constants/Colors';
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { useAuth } from '../context/AuthContext';
-
-// Type definitions
-interface Transaction {
-  id: string;
-  title: string;
-  category: string;
-  amount: number;
-  date: string;
-  type: 'income' | 'expense';
-}
+import { useRouter, useFocusEffect } from 'expo-router';
+import { getAccounts, Account } from '../services/accountService';
+import { getTransactions, Transaction } from '../services/transactionService';
 
 interface QuickAction {
   id: string;
@@ -21,15 +14,6 @@ interface QuickAction {
   color: string;
 }
 
-// Demo data
-const DEMO_TRANSACTIONS: Transaction[] = [
-  { id: '1', title: 'Salary Deposit', category: 'Income', amount: 3500.00, date: 'Today', type: 'income' },
-  { id: '2', title: 'Grocery Store', category: 'Shopping', amount: -87.50, date: 'Today', type: 'expense' },
-  { id: '3', title: 'Electric Bill', category: 'Utilities', amount: -125.00, date: 'Yesterday', type: 'expense' },
-  { id: '4', title: 'Online Transfer', category: 'Transfer', amount: -200.00, date: 'Yesterday', type: 'expense' },
-  { id: '5', title: 'Freelance Payment', category: 'Income', amount: 450.00, date: '2 days ago', type: 'income' },
-];
-
 const QUICK_ACTIONS: QuickAction[] = [
   { id: '1', icon: '↗', label: 'Send Money', color: Colors.primary },
   { id: '2', icon: '↙', label: 'Add Money', color: Colors.accent },
@@ -37,12 +21,94 @@ const QUICK_ACTIONS: QuickAction[] = [
   { id: '4', icon: '📊', label: 'Transactions', color: Colors.secondary },
 ];
 
-export default function Index() {
-  const { user, logout } = useAuth();
-  const [activeTab, setActiveTab] = useState('Home');
-  const [balanceVisible, setBalanceVisible] = useState(true);
+// ── Transaction display helpers ───────────────────────────────────────────────
 
-  const demoBalance = 5247.83;
+/** Icon and human-readable label for each transaction type */
+const TX_META: Record<string, { icon: string; label: string }> = {
+  transfer:    { icon: '↗', label: 'Transfer' },
+  deposit:     { icon: '↙', label: 'Deposit' },
+  withdrawal:  { icon: '↑', label: 'Withdrawal' },
+  bill_payment: { icon: '📄', label: 'Bill Payment' },
+};
+
+/** Format an ISO date string to a short, readable label */
+const formatTxDate = (isoString: string): string => {
+  const date  = new Date(isoString);
+  const now   = new Date();
+  const diffMs = now.getTime() - date.getTime();
+  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+  if (diffDays === 0) return 'Today';
+  if (diffDays === 1) return 'Yesterday';
+  if (diffDays < 7)  return `${diffDays} days ago`;
+  return date.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
+};
+
+export default function Index() {
+  const { user, token, logout } = useAuth();
+  const router = useRouter();
+  const [activeTab, setActiveTab]               = useState('Home');
+  const [balanceVisible, setBalanceVisible]     = useState(true);
+  const [accounts, setAccounts]                 = useState<Account[]>([]);
+  const [accountsLoading, setAccountsLoading]   = useState(false);
+  const [accountsError, setAccountsError]       = useState<string | null>(null);
+  const [transactions, setTransactions]         = useState<Transaction[]>([]);
+  const [txLoading, setTxLoading]               = useState(false);
+  const [txError, setTxError]                   = useState<string | null>(null);
+
+  // Fetch accounts and transactions whenever the dashboard gains focus.
+  // This keeps data fresh after returning from /transfer or /bills.
+  useFocusEffect(
+    useCallback(() => {
+      if (!token) return;
+
+      let cancelled = false;
+
+      const loadDashboardData = async () => {
+        // Accounts
+        setAccountsLoading(true);
+        setAccountsError(null);
+        // Transactions
+        setTxLoading(true);
+        setTxError(null);
+
+        try {
+          const [accountData, txData] = await Promise.all([
+            getAccounts(token),
+            getTransactions(token),
+          ]);
+          if (!cancelled) {
+            setAccounts(accountData);
+            setTransactions(txData);
+          }
+        } catch (err) {
+          if (!cancelled) {
+            const msg = err instanceof Error ? err.message : 'Failed to load data.';
+            setAccountsError(msg);
+            setTxError(msg);
+          }
+        } finally {
+          if (!cancelled) {
+            setAccountsLoading(false);
+            setTxLoading(false);
+          }
+        }
+      };
+
+      loadDashboardData();
+
+      // Cleanup: ignore stale responses if the effect re-runs before completion
+      return () => { cancelled = true; };
+    }, [token])
+  );
+
+  // Sum balances across all accounts; fall back to 0 when still loading
+  const totalBalance = accounts.reduce((sum, acc) => sum + acc.balance, 0);
+  // Use the currency from the first account, or INR as the default
+  const currency = accounts[0]?.currency ?? 'INR';
+
+  // Show only the 5 most recent transactions on the dashboard
+  const recentTransactions = transactions.slice(0, 5);
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -78,21 +144,42 @@ export default function Index() {
                 <Text style={styles.eyeIcon}>{balanceVisible ? '👁' : '👁‍🗨'}</Text>
               </TouchableOpacity>
             </View>
-            <Text style={styles.balanceAmount}>
-              {balanceVisible ? `$${demoBalance.toFixed(2)}` : '****'}
-            </Text>
+
+            {accountsLoading ? (
+              <ActivityIndicator
+                color={Colors.backgroundLight}
+                size="large"
+                style={{ marginVertical: 8 }}
+              />
+            ) : accountsError ? (
+              <Text style={styles.balanceError}>{accountsError}</Text>
+            ) : (
+              <Text style={styles.balanceAmount}>
+                {balanceVisible
+                  ? `${currency} ${totalBalance.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                  : '****'}
+              </Text>
+            )}
+
             <Text style={styles.balanceSubtext}>
-              Demo Account • Academic Project
+              {accounts.length > 0
+                ? `${accounts.length} account${accounts.length > 1 ? 's' : ''} • ${currency}`
+                : 'Demo Account • Academic Project'}
             </Text>
           </View>
 
           {/* Quick Actions */}
           <View style={styles.quickActions}>
             {QUICK_ACTIONS.map((action) => (
-              <TouchableOpacity 
-                key={action.id} 
+              <TouchableOpacity
+                key={action.id}
                 style={styles.actionButton}
                 activeOpacity={0.7}
+                onPress={
+                  action.id === '1' ? () => router.push('/transfer') :
+                  action.id === '3' ? () => router.push('/bills') :
+                  undefined
+                }
               >
                 <View style={[styles.actionIcon, { backgroundColor: action.color + '15' }]}>
                   <Text style={styles.actionIconText}>{action.icon}</Text>
@@ -111,39 +198,65 @@ export default function Index() {
               </TouchableOpacity>
             </View>
 
-            <View style={styles.transactionsList}>
-              {DEMO_TRANSACTIONS.map((transaction, index) => (
-                <TouchableOpacity 
-                  key={transaction.id} 
-                  style={[
-                    styles.transactionItem,
-                    index === DEMO_TRANSACTIONS.length - 1 && styles.transactionItemLast
-                  ]}
-                  activeOpacity={0.7}
-                >
-                  <View style={styles.transactionLeft}>
-                    <View style={[
-                      styles.transactionIcon,
-                      { backgroundColor: transaction.type === 'income' ? Colors.income + '15' : Colors.expense + '15' }
-                    ]}>
-                      <Text style={styles.transactionIconText}>
-                        {transaction.type === 'income' ? '↓' : '↑'}
+            {txLoading ? (
+              <View style={styles.txCenterBox}>
+                <ActivityIndicator color={Colors.primary} size="small" />
+              </View>
+            ) : txError ? (
+              <View style={styles.txCenterBox}>
+                <Text style={styles.txErrorText}>{txError}</Text>
+              </View>
+            ) : recentTransactions.length === 0 ? (
+              <View style={styles.txCenterBox}>
+                <Text style={styles.txEmptyIcon}>💳</Text>
+                <Text style={styles.txEmptyText}>No transactions yet</Text>
+              </View>
+            ) : (
+              <View style={styles.transactionsList}>
+                {recentTransactions.map((tx, index) => {
+                  const isIncoming = tx.type === 'deposit';
+                  const icon       = TX_META[tx.type]?.icon   ?? '↔';
+                  const label      = TX_META[tx.type]?.label  ?? tx.type;
+                  const bgColor    = isIncoming
+                    ? Colors.income + '15'
+                    : Colors.expense + '15';
+                  const amountColor = isIncoming ? Colors.income : Colors.text;
+                  const amountStr   = isIncoming
+                    ? `+${tx.amount.toFixed(2)}`
+                    : `-${tx.amount.toFixed(2)}`;
+                  const dateStr = formatTxDate(tx.date);
+                  const title   = tx.description ?? tx.recipientName ?? label;
+
+                  return (
+                    <TouchableOpacity
+                      key={tx._id}
+                      style={[
+                        styles.transactionItem,
+                        index === recentTransactions.length - 1 && styles.transactionItemLast,
+                      ]}
+                      activeOpacity={0.7}
+                    >
+                      <View style={styles.transactionLeft}>
+                        <View style={[styles.transactionIcon, { backgroundColor: bgColor }]}>
+                          <Text style={styles.transactionIconText}>{icon}</Text>
+                        </View>
+                        <View style={styles.transactionInfo}>
+                          <Text style={styles.transactionTitle} numberOfLines={1}>
+                            {title}
+                          </Text>
+                          <Text style={styles.transactionCategory}>
+                            {label} • {dateStr}
+                          </Text>
+                        </View>
+                      </View>
+                      <Text style={[styles.transactionAmount, { color: amountColor }]}>
+                        {amountStr}
                       </Text>
-                    </View>
-                    <View style={styles.transactionInfo}>
-                      <Text style={styles.transactionTitle}>{transaction.title}</Text>
-                      <Text style={styles.transactionCategory}>{transaction.category} • {transaction.date}</Text>
-                    </View>
-                  </View>
-                  <Text style={[
-                    styles.transactionAmount,
-                    { color: transaction.type === 'income' ? Colors.income : Colors.text }
-                  ]}>
-                    {transaction.type === 'income' ? '+' : ''}{transaction.amount < 0 ? transaction.amount : `+${transaction.amount.toFixed(2)}`}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            )}
           </View>
 
           {/* Bottom padding for navigation */}
@@ -156,7 +269,11 @@ export default function Index() {
             <TouchableOpacity
               key={tab}
               style={styles.navItem}
-              onPress={() => setActiveTab(tab)}
+              onPress={() => {
+                if (tab === 'Cards')   { router.push('/cards');         return; }
+                if (tab === 'Profile') { router.push('/beneficiaries'); return; }
+                setActiveTab(tab);
+              }}
               activeOpacity={0.7}
             >
               <Text style={[
@@ -272,6 +389,12 @@ const styles = StyleSheet.create({
     color: Colors.backgroundLight,
     opacity: 0.8,
   },
+  balanceError: {
+    fontSize: 14,
+    color: Colors.backgroundLight,
+    opacity: 0.9,
+    marginVertical: 8,
+  },
   quickActions: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -373,6 +496,33 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '700',
     marginLeft: 12,
+  },
+  // Transaction loading / empty / error states
+  txCenterBox: {
+    backgroundColor: Colors.card,
+    borderRadius: 16,
+    padding: 32,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: Colors.cardShadow,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  txEmptyIcon: {
+    fontSize: 36,
+    marginBottom: 12,
+  },
+  txEmptyText: {
+    fontSize: 15,
+    color: Colors.textSecondary,
+    fontWeight: '500',
+  },
+  txErrorText: {
+    fontSize: 14,
+    color: Colors.error,
+    textAlign: 'center',
   },
   bottomNav: {
     flexDirection: 'row',
