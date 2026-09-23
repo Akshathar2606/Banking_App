@@ -177,7 +177,9 @@ export default function Index() {
                 activeOpacity={0.7}
                 onPress={
                   action.id === '1' ? () => router.push('/transfer') :
+                  action.id === '2' ? () => router.push('/add-money') :
                   action.id === '3' ? () => router.push('/bills') :
+                  action.id === '4' ? () => router.push('/transactions') :
                   undefined
                 }
               >
@@ -271,6 +273,7 @@ export default function Index() {
               style={styles.navItem}
               onPress={() => {
                 if (tab === 'Cards')   { router.push('/cards');         return; }
+                if (tab === 'History') { router.push('/transactions');  return; }
                 if (tab === 'Profile') { router.push('/beneficiaries'); return; }
                 setActiveTab(tab);
               }}

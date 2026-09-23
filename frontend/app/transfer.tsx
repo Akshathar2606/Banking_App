@@ -16,11 +16,17 @@ import { useRouter } from 'expo-router';
 import { useAuth } from '../context/AuthContext';
 import { getAccounts, Account } from '../services/accountService';
 import { transferFunds } from '../services/transferService';
+import { getBeneficiaries, Beneficiary } from '../services/beneficiaryService';
 import { Colors } from '../constants/Colors';
 
 export default function TransferScreen() {
   const { token } = useAuth();
   const router    = useRouter();
+
+  // ── Beneficiary state ───────────────────────────────────────────────────────
+  const [beneficiaries, setBeneficiaries]           = useState<Beneficiary[]>([]);
+  const [beneLoading, setBeneLoading]               = useState(false);
+  const [selectedBeneId, setSelectedBeneId]         = useState<string | null>(null);
 
   // ── Account state ───────────────────────────────────────────────────────────
   const [accounts, setAccounts]           = useState<Account[]>([]);
@@ -46,20 +52,35 @@ export default function TransferScreen() {
       try {
         const data = await getAccounts(token);
         setAccounts(data);
-        // Auto-select the first (or only) account
-        if (data.length > 0) {
-          setSelectedAccountId(data[0]._id);
-        }
+        if (data.length > 0) setSelectedAccountId(data[0]._id);
       } catch (err) {
-        setError(
-          err instanceof Error ? err.message : 'Failed to load your accounts.'
-        );
+        setError(err instanceof Error ? err.message : 'Failed to load your accounts.');
       } finally {
         setAccountsLoading(false);
       }
     };
 
     fetchAccounts();
+  }, [token]);
+
+  // ── Load active beneficiaries on mount ───────────────────────────────────────
+  useEffect(() => {
+    if (!token) return;
+
+    const fetchBeneficiaries = async () => {
+      setBeneLoading(true);
+      try {
+        const data = await getBeneficiaries(token);
+        // Only show active beneficiaries in the quick-pick list
+        setBeneficiaries(data.filter(b => b.isActive));
+      } catch {
+        // Non-critical — manual entry still works if this fails
+      } finally {
+        setBeneLoading(false);
+      }
+    };
+
+    fetchBeneficiaries();
   }, [token]);
 
   // ── Derived values ────────────────────────────────────────────────────────────
@@ -112,6 +133,7 @@ export default function TransferScreen() {
       setRecipientAccountId('');
       setAmount('');
       setDescription('');
+      setSelectedBeneId(null);
     } catch (err) {
       setError(
         err instanceof Error ? err.message : 'Transfer failed. Please try again.'
@@ -209,6 +231,67 @@ export default function TransferScreen() {
           {/* Transfer details card */}
           <View style={styles.card}>
             <Text style={styles.cardTitle}>Transfer Details</Text>
+
+            {/* Saved beneficiaries quick-pick */}
+            {(beneLoading || beneficiaries.length > 0) && (
+              <View style={styles.fieldGroup}>
+                <Text style={styles.fieldLabel}>Saved Beneficiaries</Text>
+                {beneLoading ? (
+                  <ActivityIndicator
+                    color={Colors.primary}
+                    size="small"
+                    style={{ marginVertical: 8 }}
+                  />
+                ) : (
+                  <ScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    contentContainerStyle={styles.beneScroll}
+                  >
+                    {beneficiaries.map(b => {
+                      const isSelected = selectedBeneId === b._id;
+                      return (
+                        <TouchableOpacity
+                          key={b._id}
+                          style={[styles.beneChip, isSelected && styles.beneChipSelected]}
+                          onPress={() => {
+                            setSelectedBeneId(b._id);
+                            setRecipientAccountId(b.accountNumber);
+                            setError(null);
+                            setSuccessMessage(null);
+                          }}
+                          activeOpacity={0.75}
+                        >
+                          <View style={[styles.beneAvatar, isSelected && styles.beneAvatarSelected]}>
+                            <Text style={[styles.beneAvatarText, isSelected && styles.beneAvatarTextSelected]}>
+                              {b.name.charAt(0).toUpperCase()}
+                            </Text>
+                          </View>
+                          <Text
+                            style={[styles.beneName, isSelected && styles.beneNameSelected]}
+                            numberOfLines={1}
+                          >
+                            {b.nickname ?? b.name}
+                          </Text>
+                          <Text
+                            style={[styles.beneBank, isSelected && styles.beneBankSelected]}
+                            numberOfLines={1}
+                          >
+                            {b.bankName}
+                          </Text>
+                          <Text
+                            style={[styles.beneAccNum, isSelected && styles.beneAccNumSelected]}
+                            numberOfLines={1}
+                          >
+                            {b.accountNumber}
+                          </Text>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </ScrollView>
+                )}
+              </View>
+            )}
 
             {/* Recipient account ID */}
             <View style={styles.fieldGroup}>
@@ -501,6 +584,74 @@ const styles = StyleSheet.create({
   amountInput: {
     fontSize: 20,
     fontWeight: '600',
+  },
+
+  // Beneficiary chips
+  beneScroll: {
+    gap: 10,
+    paddingBottom: 4,
+  },
+  beneChip: {
+    width: 110,
+    borderWidth: 1.5,
+    borderColor: Colors.border,
+    borderRadius: 14,
+    padding: 12,
+    alignItems: 'center',
+    backgroundColor: Colors.background,
+  },
+  beneChipSelected: {
+    borderColor: Colors.primary,
+    backgroundColor: Colors.primary + '08',
+  },
+  beneAvatar: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: Colors.primary + '18',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 6,
+  },
+  beneAvatarSelected: {
+    backgroundColor: Colors.primary,
+  },
+  beneAvatarText: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: Colors.primary,
+  },
+  beneAvatarTextSelected: {
+    color: Colors.backgroundLight,
+  },
+  beneName: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: Colors.text,
+    textAlign: 'center',
+    marginBottom: 2,
+  },
+  beneNameSelected: {
+    color: Colors.primary,
+  },
+  beneBank: {
+    fontSize: 11,
+    color: Colors.textSecondary,
+    textAlign: 'center',
+    marginBottom: 2,
+  },
+  beneBankSelected: {
+    color: Colors.primary,
+    opacity: 0.8,
+  },
+  beneAccNum: {
+    fontSize: 10,
+    color: Colors.textLight,
+    textAlign: 'center',
+  },
+  beneAccNumSelected: {
+    color: Colors.primary,
+    opacity: 0.7,
   },
 
   // Submit button
