@@ -52,3 +52,44 @@ export const login = async (
 
   return data as LoginResponse;
 };
+
+/** Matches the successful JSON response from POST /api/auth/register */
+export interface RegisterResponse {
+  success: boolean;
+  message: string;
+  token: string;
+  user: User;
+}
+
+/**
+ * Register a new user account.
+ *
+ * @param name     - Full name
+ * @param email    - Must be unique across all users
+ * @param phone    - Must be unique across all users
+ * @param password - Plain-text password (hashed server-side; never stored here)
+ * @returns        The typed RegisterResponse including the JWT and new user object
+ * @throws         Error with the backend's message on non-2xx responses
+ */
+export const register = async (
+  name: string,
+  email: string,
+  phone: string,
+  password: string
+): Promise<RegisterResponse> => {
+  const response = await fetch(`${API_BASE_URL}/auth/register`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ name, email, phone, password }),
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data?.message ?? `Registration failed (HTTP ${response.status})`);
+  }
+
+  return data as RegisterResponse;
+};

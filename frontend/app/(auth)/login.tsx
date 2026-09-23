@@ -11,11 +11,13 @@ import {
   ScrollView,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
+import { useRouter } from 'expo-router';
 import { useAuth } from '../../context/AuthContext';
 import { Colors } from '../../constants/Colors';
 
 export default function LoginScreen() {
   const { login } = useAuth();
+  const router    = useRouter();
 
   const [email, setEmail]       = useState('');
   const [password, setPassword] = useState('');
@@ -127,6 +129,16 @@ export default function LoginScreen() {
             )}
           </TouchableOpacity>
         </View>
+
+        {/* Sign up link */}
+        <TouchableOpacity
+          style={styles.switchRow}
+          onPress={() => router.push('/(auth)/register')}
+          activeOpacity={0.7}
+        >
+          <Text style={styles.switchText}>Don't have an account? </Text>
+          <Text style={styles.switchLink}>Create one</Text>
+        </TouchableOpacity>
 
         {/* Footer note */}
         <Text style={styles.footer}>Demo Account — Academic Project</Text>
@@ -241,4 +253,11 @@ const styles = StyleSheet.create({
     color: Colors.textLight,
     marginTop: 24,
   },
+  switchRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    marginTop: 20,
+  },
+  switchText: { fontSize: 14, color: Colors.textSecondary },
+  switchLink: { fontSize: 14, color: Colors.primary, fontWeight: '700' },
 });
