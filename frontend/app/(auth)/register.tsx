@@ -117,7 +117,8 @@ export default function RegisterScreen() {
               onChangeText={v => { setName(v); clearError(); }}
               autoCapitalize="words"
               autoCorrect={false}
-              textContentType="name"
+              autoComplete="off"
+              textContentType="oneTimeCode"
               editable={!loading}
               returnKeyType="next"
             />
@@ -134,8 +135,9 @@ export default function RegisterScreen() {
               onChangeText={v => { setEmail(v); clearError(); }}
               autoCapitalize="none"
               autoCorrect={false}
+              autoComplete="off"
               keyboardType="email-address"
-              textContentType="emailAddress"
+              textContentType="oneTimeCode"
               editable={!loading}
               returnKeyType="next"
             />
@@ -151,7 +153,8 @@ export default function RegisterScreen() {
               value={phone}
               onChangeText={v => { setPhone(v); clearError(); }}
               keyboardType="phone-pad"
-              textContentType="telephoneNumber"
+              autoComplete="off"
+              textContentType="oneTimeCode"
               editable={!loading}
               returnKeyType="next"
               maxLength={10}
@@ -168,6 +171,7 @@ export default function RegisterScreen() {
               value={password}
               onChangeText={v => { setPassword(v); clearError(); }}
               secureTextEntry
+              autoComplete="new-password"
               textContentType="newPassword"
               editable={!loading}
               returnKeyType="done"

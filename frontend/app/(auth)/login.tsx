@@ -91,8 +91,9 @@ export default function LoginScreen() {
               onChangeText={(v) => { setEmail(v); setError(null); }}
               autoCapitalize="none"
               autoCorrect={false}
+              autoComplete="off"
               keyboardType="email-address"
-              textContentType="emailAddress"
+              textContentType="oneTimeCode"
               editable={!loading}
               returnKeyType="next"
             />
@@ -108,7 +109,8 @@ export default function LoginScreen() {
               value={password}
               onChangeText={(v) => { setPassword(v); setError(null); }}
               secureTextEntry
-              textContentType="password"
+              autoComplete="off"
+              textContentType="oneTimeCode"
               editable={!loading}
               returnKeyType="done"
               onSubmitEditing={handleLogin}
