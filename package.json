@@ -1,23 +1,36 @@
 {
-  "name": "bankease-database",
+  "name": "banking_app",
   "version": "1.0.0",
-  "description": "Standalone database layer for BankEase mobile banking application",
-  "main": "src/config/database.js",
+  "main": "server.js",
   "scripts": {
-    "db:test": "node src/tests/testConnection.js",
-    "db:seed": "node src/tests/seedDemoData.js"
+    "start": "node server.js",
+    "dev": "ts-node-dev --respawn --transpile-only src/server.ts",
+    "build": "tsc",
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "test:auth": "ts-node src/tests/testAuthSuite.ts"
   },
-  "keywords": [
-    "mongodb",
-    "mongoose",
-    "bankease",
-    "database"
-  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Akshathar2606/Banking_App.git"
+  },
+  "keywords": [],
   "author": "",
   "license": "ISC",
-  "type": "commonjs",
+  "description": "BankEase banking application",
   "dependencies": {
+    "bcryptjs": "^3.0.3",
+    "cors": "^2.8.6",
     "dotenv": "^17.4.2",
+    "express": "^5.2.1",
+    "jsonwebtoken": "^9.0.3",
     "mongoose": "^9.10.1"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.17",
+    "@types/express": "^4.17.21",
+    "@types/jsonwebtoken": "^9.0.6",
+    "@types/node": "^20.14.2",
+    "ts-node-dev": "^2.0.0",
+    "typescript": "^5.4.5"
   }
 }

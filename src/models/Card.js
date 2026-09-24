@@ -1,11 +1,3 @@
-// ===========================================
-// BankEase - Card Model
-// src/models/Card.js
-// ===========================================
-// Represents a debit or credit card linked to a user.
-// IMPORTANT: This is demo data only.
-// Do NOT store real card numbers or financial information here.
-
 const mongoose = require('mongoose');
 
 const cardSchema = new mongoose.Schema(
@@ -16,24 +8,21 @@ const cardSchema = new mongoose.Schema(
       ref: 'User',
       required: [true, 'User ID is required'],
     },
-
     // Whether this is a debit card or a credit card
     cardType: {
       type: String,
       required: [true, 'Card type is required'],
       enum: {
         values: ['debit', 'credit'],
-        message: 'Card type must be either "debit" or "credit"',
+        message: 'Card type must be either debit or credit',
       },
     },
-
     // Simulated card number — demo data only, NOT a real card number
     cardNumber: {
       type: String,
       required: [true, 'Card number is required'],
       trim: true,
     },
-
     // Name printed on the card
     cardHolderName: {
       type: String,
@@ -41,7 +30,6 @@ const cardSchema = new mongoose.Schema(
       trim: true,
       uppercase: true,
     },
-
     // Expiry month as a number (1–12)
     expiryMonth: {
       type: Number,
@@ -49,14 +37,12 @@ const cardSchema = new mongoose.Schema(
       min: [1, 'Month must be between 1 and 12'],
       max: [12, 'Month must be between 1 and 12'],
     },
-
     // Expiry year as a 4-digit number (e.g. 2027)
     expiryYear: {
       type: Number,
       required: [true, 'Expiry year is required'],
       min: [2024, 'Expiry year seems too far in the past'],
     },
-
     // Current state of the card
     status: {
       type: String,
@@ -69,20 +55,14 @@ const cardSchema = new mongoose.Schema(
     },
   },
   {
-    // Automatically adds createdAt field
-    timestamps: { createdAt: true, updatedAt: false },
-
-    // Maps to the 'cards' collection in MongoDB
-    collection: 'cards',
+    timestamps: { createdAt: true, updatedAt: false }, // only track creation time
+    collection: 'cards',                               // explicit MongoDB collection name
   }
 );
 
 // Index on userId to quickly retrieve all cards for a user
 cardSchema.index({ userId: 1 });
-
-// Index on status — useful for filtering active/blocked cards
+// Compound index: filter active/blocked/expired cards for a specific user
 cardSchema.index({ userId: 1, status: 1 });
 
-const Card = mongoose.model('Card', cardSchema);
-
-module.exports = Card;
+module.exports = mongoose.model('Card', cardSchema);
