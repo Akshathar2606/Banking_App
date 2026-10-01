@@ -93,7 +93,7 @@ const registerUser = async (req, res) => {
     console.error('Registration error:', error.message);
     return res.status(500).json({
       success: false,
-      message: 'Registration failed. Please try again later.',
+      message: error.message,
     });
   }
 };
@@ -171,7 +171,7 @@ const loginUser = async (req, res) => {
     console.error('Login error:', error.message);
     return res.status(500).json({
       success: false,
-      message: 'Login failed. Please try again later.',
+      message: error.message,
     });
   }
 };
